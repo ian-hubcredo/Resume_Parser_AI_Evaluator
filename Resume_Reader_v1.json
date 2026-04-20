@@ -1,0 +1,539 @@
+{
+  "name": "Resume Reader v1",
+  "nodes": [
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "chatgpt-4o-latest",
+          "mode": "list",
+          "cachedResultName": "chatgpt-4o-latest"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        736,
+        144
+      ],
+      "id": "39fcf7ec-c1a0-4a96-a460-d630b470bba5",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "<REDACTED_CREDENTIAL_ID>", "name": "<REDACTED_CREDENTIAL_NAME>"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        112,
+        -256
+      ],
+      "id": "0ea57dfd-27d9-41b8-a964-805424d53c15",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "e2c16762-099f-424a-8cc7-f6b0d31e2485",
+              "name": "job_title",
+              "value": "={{ $json.job_title }}",
+              "type": "string"
+            },
+            {
+              "id": "7ad550e0-339b-41b7-8b8b-0fd40dfc39dc",
+              "name": "job_description",
+              "value": "={{ $json.job_description }}",
+              "type": "string"
+            },
+            {
+              "id": "053d9d20-d9b6-4954-bf42-62310f1aaf99",
+              "name": "company_url",
+              "value": "={{ $json.company_url }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -272,
+        -96
+      ],
+      "id": "843655a9-81e9-40ed-a3ca-0225babf06a2",
+      "name": "Edit Fields1"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "2227bd6f-2f86-470d-a2d0-d8ff386eb788",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -1168,
+        -256
+      ],
+      "id": "94148939-91fc-4799-a7e4-8d58418ea7ca",
+      "name": "PDF - Webhook",
+      "webhookId": "<REDACTED_WEBHOOK_ID>"
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        1968,
+        -144
+      ],
+      "id": "07e17c0c-fba6-420c-843f-cbaa0e71bf49",
+      "name": "AI Agent Webhook Response"
+    },
+    {
+      "parameters": {
+        "jsCode": "/**\n * n8n Code node\n * Input: items like [{ json: { output: \"<JSON string>\" } }]\n * Output: one flattened object with useful fields\n */\n\nfunction safeParseStrJson(maybeStr, fallback = {}) {\n  if (maybeStr == null) return fallback;\n  if (typeof maybeStr === 'object') return maybeStr; // already parsed\n  try {\n    return JSON.parse(String(maybeStr));\n  } catch {\n    return fallback;\n  }\n}\n\nfunction joinArr(arr) {\n  if (!Array.isArray(arr)) return '';\n  return arr.join(' | ');\n}\n\nconst items = $input.all();\nconst out = [];\n\n// Your sample appears to be a *single* item array\nfor (const item of items) {\n  const raw = item.json ?? item;\n\n  // The interesting payload sits inside `output` as a JSON string\n  const parsed = safeParseStrJson(raw.output, {});\n\n  const overall_score = parsed.overall_score ?? null;\n\n  const cs = parsed.category_scores ?? {};\n  const category_scores = {\n    data_validation_and_processing: cs.data_validation_and_processing ?? null,\n    analysis_reporting_SOPs: cs.analysis_reporting_SOPs ?? null,\n    workflow_standardization_documentation: cs.workflow_standardization_documentation ?? null,\n    issue_troubleshooting_ad_hoc: cs.issue_troubleshooting_ad_hoc ?? null,\n    stakeholder_collaboration: cs.stakeholder_collaboration ?? null,\n    self_management_and_continuous_improvement: cs.self_management_and_continuous_improvement ?? null,\n    tooling_excel_sql_analytics: cs.tooling_excel_sql_analytics ?? null,\n    communication_written_english: cs.communication_written_english ?? null,\n  };\n\n  const strengths = Array.isArray(parsed.strengths) ? parsed.strengths : [];\n  const improvement_areas = Array.isArray(parsed.improvement_areas) ? parsed.improvement_areas : [];\n  const keyword_recommendations = Array.isArray(parsed.keyword_recommendations) ? parsed.keyword_recommendations : [];\n  const tailored_bullets = Array.isArray(parsed.tailored_bullets) ? parsed.tailored_bullets : [];\n\n  const gaps = parsed.gaps_and_learning_plan ?? {};\n  const quick_wins = Array.isArray(gaps.quick_wins_1_2_weeks) ? gaps.quick_wins_1_2_weeks : [];\n  const medium_horizon = Array.isArray(gaps.medium_horizon_1_2_months) ? gaps.medium_horizon_1_2_months : [];\n\n  const ats_tips = Array.isArray(parsed.ats_tips) ? parsed.ats_tips : [];\n\n  const company = parsed.company_insights ?? {};\n  const company_highlights = Array.isArray(company.highlights) ? company.highlights : [];\n  const company_sources = Array.isArray(company.sources) ? company.sources : [];\n  const company_research_status = company.research_status ?? '';\n\n  const summary = parsed.summary ?? '';\n\n  // Build a flat, sheet-friendly record\n  const record = {\n    overall_score,\n\n    // Category scores\n    cs_data_validation_and_processing: category_scores.data_validation_and_processing,\n    cs_analysis_reporting_SOPs: category_scores.analysis_reporting_SOPs,\n    cs_workflow_standardization_documentation: category_scores.workflow_standardization_documentation,\n    cs_issue_troubleshooting_ad_hoc: category_scores.issue_troubleshooting_ad_hoc,\n    cs_stakeholder_collaboration: category_scores.stakeholder_collaboration,\n    cs_self_management_and_continuous_improvement: category_scores.self_management_and_continuous_improvement,\n    cs_tooling_excel_sql_analytics: category_scores.tooling_excel_sql_analytics,\n    cs_communication_written_english: category_scores.communication_written_english,\n\n    // Arrays joined with \" | \" for easy viewing in Sheets\n    strengths_all: joinArr(strengths),\n    strengths_1: strengths[0] ?? '',\n    strengths_2: strengths[1] ?? '',\n    strengths_3: strengths[2] ?? '',\n\n    improvement_areas_all: joinArr(improvement_areas),\n    improvement_1: improvement_areas[0] ?? '',\n    improvement_2: improvement_areas[1] ?? '',\n    improvement_3: improvement_areas[2] ?? '',\n\n    keyword_recommendations_all: joinArr(keyword_recommendations),\n\n    tailored_bullets_all: joinArr(tailored_bullets),\n    tailored_bullet_1: tailored_bullets[0] ?? '',\n    tailored_bullet_2: tailored_bullets[1] ?? '',\n    tailored_bullet_3: tailored_bullets[2] ?? '',\n\n    quick_wins_all: joinArr(quick_wins),\n    quick_win_1: quick_wins[0] ?? '',\n    quick_win_2: quick_wins[1] ?? '',\n\n    medium_horizon_all: joinArr(medium_horizon),\n    medium_horizon_1: medium_horizon[0] ?? '',\n    medium_horizon_2: medium_horizon[1] ?? '',\n\n    ats_tips_all: joinArr(ats_tips),\n\n    company_research_status,\n    company_highlights_all: joinArr(company_highlights),\n    company_sources_all: joinArr(company_sources),\n\n    summary,\n  };\n\n  out.push({ json: record });\n}\n\n// If your input is a single element array, returning the first is fine,\n// but returning all keeps it generic for future batches.\nreturn out;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        912,
+        -256
+      ],
+      "id": "1f6090ab-315b-44bd-9f8c-030677ad549a",
+      "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineAll",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1136,
+        -64
+      ],
+      "id": "ca93e1d4-9660-4cc1-9ba3-ff54d50ad10d",
+      "name": "Merge2"
+    },
+    {
+      "parameters": {
+        "operation": "Convert from PDF",
+        "url": "={{ $json.url }}",
+        "advancedOptions": {}
+      },
+      "type": "n8n-nodes-pdfco.PDFco Api",
+      "typeVersion": 1,
+      "position": [
+        -720,
+        -352
+      ],
+      "id": "330f96e9-347f-4e7e-8268-b1b43a0dd1d5",
+      "name": "PDFco Api",
+      "credentials": {
+        "pdfcoApi": {
+          "id": "<REDACTED_CREDENTIAL_ID>", "name": "<REDACTED_CREDENTIAL_NAME>"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "Upload File to PDF.co",
+        "binaryData": true,
+        "binaryPropertyName": "file",
+        "name": "file"
+      },
+      "type": "n8n-nodes-pdfco.PDFco Api",
+      "typeVersion": 1,
+      "position": [
+        -944,
+        -352
+      ],
+      "id": "dbf67263-3299-42fc-8de6-f56c1a7dfe82",
+      "name": "PDFco Api1",
+      "credentials": {
+        "pdfcoApi": {
+          "id": "<REDACTED_CREDENTIAL_ID>", "name": "<REDACTED_CREDENTIAL_NAME>"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get incoming items as plain JSON\nconst items = $input.all().map(i => i.json);\n\n// Canonical section names to recognize directly (case-insensitive, optional trailing colon)\nconst KNOWN_SECTIONS = [\n  \"Personal Information\",\n  \"Contact\",\n  \"Summary\",\n  \"Profile\",\n  \"Objective\",\n  \"Education\",\n  \"Work Experience\",\n  \"Experience\",\n  \"Professional Experience\",\n  \"Projects\",\n  \"Skills\",\n  \"Technical Skills\",\n  \"Certifications\",\n  \"Awards\",\n  \"Publications\",\n  \"Activities\",\n  \"Volunteer\",\n  \"Languages\",\n  \"Interests\",\n  \"References\"\n];\n\n// For fast case-insensitive comparison\nconst KNOWN_SET = new Set(KNOWN_SECTIONS.map(s => s.toLowerCase()));\n\nfunction titleCase(s) {\n  return s.replace(/\\w\\S*/g, w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());\n}\n\nfunction normalizeHeadingText(line) {\n  return line.replace(/:$/, '').trim();\n}\n\n// Returns a canonical section name if line looks like a heading; otherwise null\nfunction detectHeading(line) {\n  const trimmed = normalizeHeadingText(line);\n  const lc = trimmed.toLowerCase();\n\n  // 1) Direct match against known sections\n  if (KNOWN_SET.has(lc)) return titleCase(trimmed);\n\n  // 2) Heuristic heading detection\n  //    - At least one run of 4+ consecutive uppercase letters (e.g., \"WORK EXPERIENCE\")\n  //    - Reasonably short line (≤ 80 chars)\n  //    - Uppercase ratio high (> 0.6)\n  //    - Avoid lines that look like data (numbers, emails)\n  const hasUpperRun = /[A-Z]{4,}/.test(trimmed);\n  const isShort = trimmed.length <= 80;\n  const uppercaseCount = (trimmed.match(/[A-Z]/g) || []).length;\n  const alphaCount = (trimmed.match(/[A-Za-z]/g) || []).length;\n  const uppercaseRatio = alphaCount ? (uppercaseCount / alphaCount) : 0;\n  const looksLikeData = /\\d/.test(trimmed) || /@/.test(trimmed);\n\n  if (hasUpperRun && isShort && uppercaseRatio > 0.6 && !looksLikeData) {\n    // Map common variants into canonical names when possible\n    const canonicalGuesses = [\n      [\"work experience\", \"Work Experience\"],\n      [\"professional experience\", \"Work Experience\"],\n      [\"experience\", \"Work Experience\"],\n      [\"technical skills\", \"Skills\"],\n      [\"skills\", \"Skills\"],\n      [\"education\", \"Education\"],\n      [\"projects\", \"Projects\"],\n      [\"certifications\", \"Certifications\"],\n      [\"awards\", \"Awards\"],\n      [\"publications\", \"Publications\"],\n      [\"activities\", \"Activities\"],\n      [\"volunteer\", \"Volunteer\"],\n      [\"languages\", \"Languages\"],\n      [\"interests\", \"Interests\"],\n      [\"references\", \"References\"],\n      [\"summary\", \"Summary\"],\n      [\"profile\", \"Profile\"],\n      [\"objective\", \"Objective\"],\n      [\"contact\", \"Contact\"],\n      [\"personal information\", \"Personal Information\"]\n    ];\n\n    for (const [needle, canon] of canonicalGuesses) {\n      if (lc.includes(needle)) return canon;\n    }\n\n    // Fallback: title-case the detected heading\n    return titleCase(trimmed);\n  }\n\n  return null;\n}\n\nconst parsedResumes = items.map((item) => {\n  const parsed = {};               // { [section: string]: string[] }\n  const order = [];                // keep section order if needed\n  let currentSection = null;\n\n  const text = (item.text || \"\").replace(/\\r/g, \"\");\n  const lines = text.split(\"\\n\").map(l => l.trim()).filter(l => l.length > 0);\n\n  for (const rawLine of lines) {\n    const line = rawLine.replace(/\\s+/g, ' ').trim();\n    const maybeHeading = detectHeading(line);\n\n    if (maybeHeading) {\n      currentSection = maybeHeading;\n      if (!parsed[currentSection]) {\n        parsed[currentSection] = [];\n        order.push(currentSection);\n      }\n      continue;\n    }\n\n    // If we haven't seen any section yet, bucket into \"Misc\"\n    if (!currentSection) {\n      currentSection = \"Misc\";\n      if (!parsed[currentSection]) {\n        parsed[currentSection] = [];\n        order.push(currentSection);\n      }\n    }\n\n    parsed[currentSection].push(line);\n  }\n\n  // Join arrays into newline-separated strings for output compatibility\n  const joined = Object.fromEntries(\n    Object.entries(parsed).map(([k, arr]) => [k, arr.join(\"\\n\")])\n  );\n\n  // If you also want to expose the section order, uncomment:\n  // joined._section_order = order;\n\n  return { json: joined };\n});\n\nreturn parsedResumes;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -272,
+        -352
+      ],
+      "id": "1043c3fb-5c93-406a-b557-72bd523ea744",
+      "name": "Resume Sections"
+    },
+    {
+      "parameters": {
+        "jsCode": "// This Code node takes the incoming Webhook item(s)\n// and outputs only the `body` portion as plain JSON.\n//\n// Example Input:  [{ headers: {...}, body: {...}, ... }]\n// Example Output: [{ job_title: \"...\", job_description: \"...\", company_url: \"...\" }]\n\nreturn $input.all().map(item => {\n  const body = item.json.body ?? {};\n  return { json: body };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -496,
+        -96
+      ],
+      "id": "88cede5d-8180-42d5-a09e-19ec2c95dc0e",
+      "name": "Job Branch"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "59112239-f1d1-42aa-9079-920e948b4ed1",
+              "name": "url",
+              "value": "={{ $json.url }}",
+              "type": "string"
+            },
+            {
+              "id": "c525f8db-3e02-4555-82aa-6826108d5789",
+              "name": "text",
+              "value": "={{ $json.body }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -496,
+        -352
+      ],
+      "id": "95987299-83f8-45f7-bd10-fdac57257cd6",
+      "name": "Resume Branch"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get both input items\nconst items = $input.all();\n\n// Expecting two items: one resume, one job description\nif (items.length < 2) {\n  throw new Error(\"Expected two items: [resumeObject, jobObject]\");\n}\n\n// Extract both\nconst resume = items[0].json;\nconst job = items[1].json;\n\n// Merge both into one unified structure\nconst merged = {\n  resume_data: resume,\n  job_posting: {\n    title: job.job_title || \"\",\n    description: job.job_description || \"\",\n    company_url: job.company_url || \"\"\n  }\n};\n\n// Return a single item\nreturn [{ json: merged }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        336,
+        -256
+      ],
+      "id": "1d0e9888-5fb1-44c6-8dbe-5c0e91e97ef3",
+      "name": "Unify Json Branch"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1712,
+        -144
+      ],
+      "id": "e1f4d90b-00fe-4a55-966a-b3931fc7b983",
+      "name": "Merge1"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=<prompt>\n  <role>system</role>\n  <instructions>\n    You are a senior résumé editor. Output a single LaTeX document only (no markdown).\n  </instructions>\n\n  <constraints>\n    <constraint>Total output ≤ 9000 characters (hard cap).</constraint>\n    <constraint>Remove all comments/blank lines; collapse whitespace.</constraint>\n    <constraint>Exactly one printed page on A4; margins 0.55in; base font ≈10.8–11.2pt; line spread 1.28–1.32.</constraint>\n    <constraint>≤3 roles (each ≤3 bullets, 14–18 words), ≤2 projects (each ≤2 bullets).</constraint>\n    <constraint>Skills: 4–6 groups × 3–6 items each.</constraint>\n    <constraint>Suggestion badges: ≤4 add, ≤4 remove; each ≤9 words.</constraint>\n    <constraint>Show suggested removes in blue, adds in red; omit missing/empty inputs.</constraint>\n    <constraint>Prefer concise phrasing; drop low-value details to keep to one page.</constraint>\n  </constraints>\n\n  <inputs><![CDATA[\n    STRENGTHS_ALL={{ $json.strengths_all }}\n    IMPROVEMENTS_ALL={{ $json.improvement_areas_all }}\n    KEYWORDS_ALL={{ $json.keyword_recommendations_all }}\n    TAILORED_BULLETS_ALL={{ $json.tailored_bullets_all }}\n    QUICK_WINS_ALL={{ $json.quick_wins_all }}\n    MEDIUM_HORIZON_ALL={{ $json.medium_horizon_all }}\n    SUMMARY_NOTE={{ $json.summary }}\n  ]]></inputs>\n\n  <output_requirements>\n    <format>Single self-contained LaTeX source using pdflatex-compatible packages only; no external assets.</format>\n    <format>No boilerplate comments; no extra pages; avoid overfull boxes by tightening spacing.</format>\n    <format>No long URLs in visible text; use \\href{<url>}{short label}.</format>\n  </output_requirements>\n\n  <latex_structure_hint>\n    Use \\documentclass[11pt,a4paper]{article} with:\n    - \\usepackage[margin=0.55in]{geometry}\n    - \\usepackage{paracol} for 2 columns (aside 0.32\\textwidth, main 0.68\\textwidth) so small sections can sit beside larger ones\n    - \\usepackage{enumitem,microtype,xcolor,hyperref,array,tabularx}\n    - \\renewcommand\\familydefault{\\sfdefault}; \\setlength{\\parindent}{0pt}; \\linespread{1.3}\n    - \\setlist[itemize]{nosep,leftmargin=*}\n    Sections (typical order): Header (name/role + one-line contact) • Summary • Experience • Projects • Education • Skills • Languages • Activities. Place compact sections (Skills/Languages/Activities) in the aside column; put larger sections (Experience/Projects/Education) in the main column. Switch columns with paracol (\\begin{paracol}{2} ... \\switchcolumn ...).\n    Badges: implement tiny bordered labels with \\fcolorbox using colors:\n      \\newcommand{\\addbadge}[1]{\\fcolorbox{red}{white}{\\footnotesize\\textsf{#1}}}\n      \\newcommand{\\rmbadge}[1]{\\fcolorbox{blue}{white}{\\footnotesize\\textsf{#1}}}\n    Enforce bullet/word limits; truncate gracefully with ellipses if needed to keep one page.\n  </latex_structure_hint>\n\n  <visual_style>\n    <rule>\\hypersetup{colorlinks=true,urlcolor=black}</rule>\n    <rule>\\definecolor{add}{RGB}{185,28,28}\\definecolor{rm}{RGB}{29,78,216}</rule>\n    <rule>\\renewcommand{\\addbadge}[1]{\\fcolorbox{add}{white}{\\footnotesize\\textsf{##1}}}\\renewcommand{\\rmbadge}[1]{\\fcolorbox{rm}{white}{\\footnotesize\\textsf{##1}}}</rule>\n    <rule>Header: name in \\Large\\bfseries; role small caps; single compact contact line with separators.</rule>\n    <rule>Use tight vertical spacing; 6–8pt gaps between blocks; avoid section rules/ornaments.</rule>\n  </visual_style>\n\n  <output_only_latex>\n    Return a complete minimal LaTeX file. Example skeleton to follow (fill with analyzed content from inputs; omit empty parts):\n    \\documentclass[11pt,a4paper]{article}\\usepackage[margin=0.55in]{geometry}\\usepackage{paracol,enumitem,microtype,xcolor,hyperref,array,tabularx}\\renewcommand\\familydefault{\\sfdefault}\\linespread{1.3}\\setlength{\\parindent}{0pt}\\setlength{\\parskip}{0pt}\\definecolor{add}{RGB}{185,28,28}\\definecolor{rm}{RGB}{29,78,216}\\newcommand{\\addbadge}[1]{\\fcolorbox{add}{white}{\\footnotesize\\textsf{#1}}}\\newcommand{\\rmbadge}[1]{\\fcolorbox{rm}{white}{\\footnotesize\\textsf{#1}}}\\begin{document}\\raggedright\n    % HEADER (single line contact)\n    {\\Large\\textbf{<Name>}} \\quad \\textsc{<Role>} \\hfill <City> · <Email> · <Phone> · \\href{<url>}{LinkedIn} · \\href{<url>}{GitHub}\n    % SUMMARY (1–2 lines)\n    \\vspace{4pt}\\small <Concise summary from SUMMARY\\_NOTE + STRENGTHS\\_ALL (compressed)>\n    % TWO COLUMNS\n    \\begin{paracol}{2}\n      % ASIDE (short sections)\n      \\section*{\\normalsize Skills}\n      \\footnotesize <4–6 grouped skill lines, 3–6 items each>\n      \\section*{\\normalsize Languages}\n      \\footnotesize <List>\n      \\section*{\\normalsize Activities}\n      \\footnotesize <List>\n      \\section*{\\normalsize Suggestions}\n      \\footnotesize \\textcolor{add}{\\addbadge{<≤4 adds>}} \\quad \\textcolor{rm}{\\rmbadge{<≤4 removes>}}\n      \\switchcolumn\n      % MAIN (larger sections)\n      \\section*{\\normalsize Experience}\n      \\footnotesize \\textbf{<Company — Title>} \\hfill <Dates>\\\\ \\emph{<Location>}\\\\ \\begin{itemize}\\item <Tailored bullet 1>\\item <Tailored bullet 2>\\item <Tailored bullet 3>\\end{itemize}\n      \\vspace{2pt}\\textbf{<Company — Title>} \\hfill <Dates>\\\\ \\emph{<Location>}\\\\ \\begin{itemize}\\item <≤3 bullets>\\end{itemize}\n      \\section*{\\normalsize Projects}\n      \\footnotesize \\textbf{<Project>} — \\href{<url>}{repo}\\begin{itemize}\\item <≤2 bullets>\\end{itemize}\n      \\section*{\\normalsize Education}\n      \\footnotesize \\textbf{<Degree, School>} \\hfill <Dates>\\\\ <Notes>\n    \\end{paracol}\n    \\end{document}\n  </output_only_latex>\n</prompt>",
+        "hasOutputParser": true,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        1360,
+        -64
+      ],
+      "id": "2a34c06c-37b2-40fa-a1c0-ddbde84dc60c",
+      "name": "Latex Code Generator Agent"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=<prompt>\n  <CARE>\n    <Context>\n      You are a résumé reviewer and job-alignment analyst for data- and operations-heavy marketing roles.\n      Your task is to evaluate a candidate’s résumé against a specific job (Agoda MSE Marketing Specialist),\n      identify strengths, gaps, and tailor-ready improvements. When tools allow, briefly research the company URL\n      to extract role-relevant context (mission, current initiatives, culture, terminology) to ground your advice.\n\n      <inputs>\n        <!-- Raw JSON input is provided exactly as below. Parse it directly. -->\n        <![CDATA[ ]]>\n        <!-- Expected structure of INPUT_JSON:\n        [\n          {\n            \"text\": \"<{{ $json.resume_data }}>\"\n          },\n          {\n            \"job_title\": \"<{{ $json.job_posting.title }}>\",\n            \"job_description\": \"<{{ $json.job_posting.description }}>\"\n          }\n        ]\n        -->\n      </inputs>\n\n      <assumptions>\n        - If web browsing/retrieval tools are available, consult the company_url and 1–2 top pages linked from it\n          (e.g., Careers, About, Engineering/Marketing blog) to collect 3–5 concrete, role-relevant facts.\n        - If browsing is unavailable, proceed using only the provided JD and clearly label company insights as \"inferred\".\n        - Focus the analysis on operational data validation, SOP/QA rigor, process documentation, Excel/SQL literacy,\n          and continuous improvement mindsets emphasized in the JD.\n      </assumptions>\n    </Context>\n\n    <Action>\n      <steps>\n        1) Parse INPUT_JSON and extract:\n           - resume_text = array[0].text\n           - job_title, job_description, company_url = array[1].*\n        2) From the JD, build a competency map with weighted criteria:\n           - Data validation & processing at scale (weight 20)\n           - Analysis, reporting, SOP/Guideline maintenance (15)\n           - Workflow standardization & documentation (15)\n           - Issue triage/troubleshooting & ad-hoc support (10)\n           - Stakeholder collaboration (internal/external) (10)\n           - Self-management under time pressure; continuous improvement (10)\n           - Tooling: Excel (Pivot/VLOOKUP), SQL (plus), analytics mindset (10)\n           - Communication (written English) (10)\n        3) Extract résumé evidence mapped to these criteria (quotes or paraphrases with minimal span).\n        4) Assess gaps and risks (e.g., lack of explicit Excel/SQL examples, OTA/hospitality context, SOP ownership).\n        5) If allowed, research company_url for 3–5 role-relevant facts (cite URLs). Otherwise, skip or infer.\n        6) Generate tailored, copy-ready bullet rewrites (quantified where possible) that align résumé to the JD.\n        7) Provide an improvement plan (quick wins for 1–2 weeks; medium horizon 1–2 months).\n        8) Score overall fit and per-category scores (0–100), justify briefly and fairly.\n        9) Output strictly as JSON (no markdown).\n      </steps>\n\n      <constraints>\n        - Be specific, measurable, and truthful—no fabrication. If a metric is missing, suggest how to obtain/estimate it.\n        - Keep bullets action-led (verb + task + method + outcome/metric).\n        - When suggesting Excel/SQL, tie to examples the candidate plausibly has (e.g., ETL, clustering, QA checks).\n        - Keep language concise and ATS-friendly; avoid emojis or decorative symbols.\n        - If company research is performed, list sources used; if not, state \"not performed\".\n      </constraints>\n    </Action>\n\n    <Result>\n      Produce ONLY a single JSON object with the following schema (and nothing else):\n\n      <![CDATA[\n{\n  \"overall_score\": 0-100,\n  \"category_scores\": {\n    \"data_validation_and_processing\": 0-100,\n    \"analysis_reporting_SOPs\": 0-100,\n    \"workflow_standardization_documentation\": 0-100,\n    \"issue_troubleshooting_ad_hoc\": 0-100,\n    \"stakeholder_collaboration\": 0-100,\n    \"self_management_and_continuous_improvement\": 0-100,\n    \"tooling_excel_sql_analytics\": 0-100,\n    \"communication_written_english\": 0-100\n  },\n  \"strengths\": [\n    \"Concrete, evidenced strengths mapped to JD...\"\n  ],\n  \"improvement_areas\": [\n    \"Specific, realistic gaps with brief rationale...\"\n  ],\n  \"keyword_recommendations\": [\n    \"Exact JD/role terms missing or underused (e.g., 'Pivot Table', 'VLOOKUP', 'SOPs', 'mapping operations', 'data validation pipeline', 'root cause analysis', 'issue triaging')\"\n  ],\n  \"tailored_bullets\": [\n    \"Rewrite 5–8 resume bullets aligned to the JD with measurable outcomes where possible\"\n  ],\n  \"gaps_and_learning_plan\": {\n    \"quick_wins_1_2_weeks\": [\n      \"e.g., Add Excel specifics: 'Built PivotTables/VLOOKUP QA tracker for 10k+ rows, reducing validation time by 35%'\",\n      \"e.g., Document current n8n/ETL SOP in a 1-pager with inputs, outputs, SLAs\"\n    ],\n    \"medium_horizon_1_2_months\": [\n      \"e.g., Create a small SQL portfolio snippet targeting validation queries, joins for mapping ops\",\n      \"e.g., Draft a standard change-management checklist and rollback plan for feeds\"\n    ]\n  },\n  \"ats_tips\": [\n    \"Keep filetype PDF, standard section headers, no tables/columns for core content\",\n    \"Mirror JD phrasing where truthful (e.g., 'validation results', 'SLA compliance', 'standardize workflows')\"\n  ],\n  \"company_insights\": {\n    \"research_status\": \"performed | not_performed\",\n    \"highlights\": [\n      \"3–5 concise facts connecting company/team context to résumé tailoring\"\n    ],\n    \"sources\": [\n      \"https://... (if research performed)\"\n    ]\n  },\n  \"summary\": \"2–3 sentence executive summary of fit + next best actions\"\n}\n      ]]>\n    </Result>\n\n    <Evaluation>\n      Ensure internal consistency:\n      - Scores must align with cited evidence.\n      - Tailored bullets must be directly traceable to résumé experience (or clearly flagged as suggested reframes).\n      - No hallucinated employers, dates, or achievements.\n      - If a requirement is unmet (e.g., explicit Excel examples), recommend an honest line that demonstrates capability via adjacent work.\n    </Evaluation>\n  </CARE>\n\n  <Execution>\n    1) Parse INPUT_JSON.\n    2) Build competency map and evidence table internally.\n    3) (Optional) Research company_url; record sources.\n    4) Generate JSON output exactly in the specified schema.\n  </Execution>\n</prompt>",
+        "hasOutputParser": true,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        560,
+        -256
+      ],
+      "id": "1e68c2ed-be12-4075-942c-e6d1ec54f7d7",
+      "name": "Resume Evaluation Agent"
+    },
+    {
+      "parameters": {
+        "content": "## Webhook takes in Resume Pdf and the job title / description of the job that the person is applying to \n",
+        "height": 128,
+        "width": 512
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -976,
+        80
+      ],
+      "id": "76cf95c3-94d3-4514-8015-8842bde32003",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "## AI Agent Evaluates the Resume base on job description \n",
+        "width": 384
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        256,
+        208
+      ],
+      "id": "a85a3579-79e9-4e1c-bb1e-8f7d27a3617d",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "## Base on the evaluation the second AI agent would generate an updated Latex code of the resume",
+        "width": 496
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1104,
+        176
+      ],
+      "id": "9e4df8f6-826b-4901-821b-dd56324baa2d",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "content": "## Webhook returns the Latex version of the updated resume and the evaluation",
+        "width": 432
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1840,
+        64
+      ],
+      "id": "a6464f7d-5a80-4166-8674-0484bdf37980",
+      "name": "Sticky Note3"
+    }
+  ],
+  "connections": {
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Resume Evaluation Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "Latex Code Generator Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Unify Json Branch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields1": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "PDF - Webhook": {
+      "main": [
+        [
+          {
+            "node": "Job Branch",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "PDFco Api1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "Merge2",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge2": {
+      "main": [
+        [
+          {
+            "node": "Latex Code Generator Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PDFco Api": {
+      "main": [
+        [
+          {
+            "node": "Resume Branch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PDFco Api1": {
+      "main": [
+        [
+          {
+            "node": "PDFco Api",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resume Sections": {
+      "main": [
+        [
+          {
+            "node": "Merge2",
+            "type": "main",
+            "index": 1
+          },
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Job Branch": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resume Branch": {
+      "main": [
+        [
+          {
+            "node": "Resume Sections",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Unify Json Branch": {
+      "main": [
+        [
+          {
+            "node": "Resume Evaluation Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge1": {
+      "main": [
+        [
+          {
+            "node": "AI Agent Webhook Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Latex Code Generator Agent": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Resume Evaluation Agent": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "pinData": {},
+  "triggerCount": 1,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}
